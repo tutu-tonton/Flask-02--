@@ -8,6 +8,7 @@ import pytz
 # print(sys.path)
 
 app = Flask(__name__)
+
 app.config['SQLALCHEMY_DATABASE_URI'] = 'sqlite:///blog.db'
 db = SQLAlchemy(app)
 
@@ -20,9 +21,12 @@ class Post(db.Model):
                            default=datetime.now(pytz.timezone('Asia/Tokyo')))
 
 
-@app.route('/')
+@app.route('/', methods=['GET', 'POST'])
 def index():
-    return render_template('index.html')
+    if request.method == 'GET':
+        # List形式で取得される
+        posts = Post.query.all()
+        return render_template('index.html', posts=posts)
 
 
 @app.route('/create', methods=['GET', 'POST'])
