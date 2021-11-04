@@ -44,3 +44,20 @@ def create():
 
     else:
         return render_template('create.html')
+
+
+@app.route('/<int:id>/update', methods=['GET', 'POST'])
+def update(id):
+    post = Post.query.get(id)
+    # あるアイテムの更新ボタンを押した場合。新規で更新画面へ移動
+    if request.method == 'GET':
+        return render_template('update.html', post=post)
+
+    # 更新画面で更新内容入力後更新ボタンを押した場合。
+    else:
+        post.title = request.form.get('title')
+        post.body = request.form.get('body')
+
+        db.session.commit()
+
+        return redirect('/')
