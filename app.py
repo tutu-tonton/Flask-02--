@@ -1,8 +1,10 @@
 from flask import Flask
 from flask import render_template, request, redirect
 from flask_sqlalchemy import SQLAlchemy
-from flask_login import UserMixin, LoginManager
+from flask_login import UserMixin, LoginManager, login_user, logout_user, login_required
 import os
+from werkzeug.security import generate_password_hash, check_password_hash
+
 from datetime import datetime
 import pytz
 # import sys
@@ -33,7 +35,13 @@ class User(UserMixin, db.Model):
     password = db.Column(db.String(12))
 
 
+@login_manager.user_loader
+def load_user(user_id):
+    return User.query.get(int(user_id))
+
+
 @app.route('/', methods=['GET', 'POST'])
+@login_required
 def index():
     if request.method == 'GET':
         # List形式で取得される
@@ -41,7 +49,52 @@ def index():
         return render_template('index.html', posts=posts)
 
 
+@app.route('/signup', methods=['GET', 'POST'])
+def signup():
+    if request.method == 'POST':
+        username = request.form.get('username')
+        password = request.form.get('password')
+
+        user = User(username=username, password=generate_password_hash(
+            password, method='sha256'))
+
+        db.session.add(user)
+        db.session.commit()
+
+        return redirect('/login')
+
+    else:
+        return render_template('signup.html')
+
+
+@app.route('/login', methods=['GET', 'POST'])
+def login():
+    # ログイン画面でフォーム入力後、送信ボタン押した場合の処理
+    if request.method == 'POST':
+
+        username = request.form.get('username')
+        password = request.form.get('password')
+
+        user = User.query.filter_by(username=username).first()
+
+        if check_password_hash(user.password, password):
+            login_user(user)
+
+            return redirect('/')
+
+    else:
+        return render_template('login.html')
+
+
+@app.route('/logout')
+@login_required
+def logout():
+    logout_user()
+    return redirect('/login')
+
+
 @app.route('/create', methods=['GET', 'POST'])
+@login_required
 def create():
     if request.method == 'POST':
         title = request.form.get('title')
@@ -59,6 +112,7 @@ def create():
 
 
 @app.route('/<int:id>/update', methods=['GET', 'POST'])
+@login_required
 def update(id):
     post = Post.query.get(id)
     # あるアイテムの更新ボタンを押した場合。新規で更新画面へ移動
@@ -76,6 +130,7 @@ def update(id):
 
 
 @app.route('/<int:id>/delete', methods=['GET'])
+@login_required
 def delete(id):
     post = Post.query.get(id)
 
